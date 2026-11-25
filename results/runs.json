@@ -1,0 +1,72 @@
+[
+  {
+    "experiment_id": 1,
+    "label": "smoke",
+    "kind": "scaling",
+    "status": "completed",
+    "unique_id": "94d036a865b199dc6d5d",
+    "training_config": {
+      "architecture_config": {
+        "attention_bias": false,
+        "head_dim": 64,
+        "hidden_size": 448,
+        "intermediate_size": 1280,
+        "num_attention_heads": 7,
+        "num_hidden_layers": 9,
+        "num_key_value_heads": 7,
+        "rms_norm_eps": 1e-06,
+        "rope_theta": 1000000,
+        "tie_word_embeddings": false,
+        "dtype": "bfloat16",
+        "vocab_size": 32000
+      },
+      "optimizer_config": {
+        "lr_scheduler": {
+          "peak_value": 0.0003,
+          "final_lr_frac": 0.1,
+          "warmup_frac": 0.05,
+          "init_value": 0.0
+        },
+        "weight_decay": 0.01,
+        "beta1": 0.9,
+        "beta2": 0.95,
+        "eps": 1e-08,
+        "eps_root": 1e-08,
+        "grad_clip_norm": 1.0
+      },
+      "train_batch_size": 128,
+      "val_batch_size": 32,
+      "n_evals": 16,
+      "total_train_tokens": 1048576,
+      "max_runtime_seconds": 30.0,
+      "model_seed": 0
+    },
+    "function_call_id": "fc-01M8A0H4XQQ889N25PG2CJG8H3",
+    "submitted_at": "2026-11-25T18:47:16+00:00",
+    "finished_at": "2026-11-25T18:48:32+00:00",
+    "val_losses": [
+      10.297823905944824,
+      10.08474349975586,
+      9.868369102478027,
+      9.662651062011719,
+      9.508501052856445,
+      9.405850410461426,
+      9.332049369812012,
+      9.271483421325684,
+      9.220897674560547,
+      9.180155754089355,
+      9.156306266784668,
+      9.139037132263184,
+      9.126227378845215,
+      9.120784759521484,
+      9.116812705993652,
+      9.113842964172363
+    ],
+    "final_val_loss": 9.113842964172363,
+    "training_seconds": 7.1946415680000015,
+    "charged_seconds": 7.1946415680000015,
+    "model_params": 51389888,
+    "estimated_memory_bytes": 34259315816.0,
+    "error": null
+  }
+]

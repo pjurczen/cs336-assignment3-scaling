@@ -38,7 +38,8 @@ def make_chunk(dclm_chunk: TokenizedDCLMChunk) -> TokenizedDCLMChunkResult:
     volumes=VOLUME_MOUNTS,
     timeout=60 * 60 * 12,
     # Raw chunks + shuffle runs + final shards each hold ~2 bytes/token locally.
-    ephemeral_disk=200 * 1024,
+    # 512 GiB is Modal's minimum explicit request.
+    ephemeral_disk=512 * 1024,
     memory=32 * 1024,  # one shuffle run (DCLMData.shuffle_run_target_bytes) in RAM
     nonpreemptible=True,
 )

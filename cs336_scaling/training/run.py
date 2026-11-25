@@ -82,7 +82,8 @@ class TrainingResult:
     model_params: int
 
 
-@app.function(
+# Shared with cs336_scaling/selfstudy/remote.py so both GPU functions match.
+TRAINING_FUNCTION_KWARGS = dict(
     image=build_image(),
     volumes=VOLUME_MOUNTS,
     # Modal's timeout covers container startup, data copy and JIT compile too,
@@ -91,8 +92,14 @@ class TrainingResult:
     secrets=MODAL_SECRETS,
     gpu="A100-80GB",
     # Only the train shards a run needs are copied to /tmp/data (2 bytes/token).
-    ephemeral_disk=100 * 1024,
+    # 512 GiB is Modal's minimum explicit request.
+    ephemeral_disk=512 * 1024,
+    # Shut the A100 down right after a run instead of idling (billed) for 60s.
+    scaledown_window=2,
 )
+
+
+@app.function(**TRAINING_FUNCTION_KWARGS)
 def run_training(
     training_config: TrainingConfig, sunet_id: str, experiment_id: int
 ) -> TrainingResult:
@@ -469,6 +476,11 @@ def run_training(
         raise
     except Exception as exc:
         elapsed_seconds = elapsed_training_seconds()
+        try:
+            # Lets the self-study runner charge a crashed run its actual training time.
+            exc.elapsed_training_seconds = elapsed_seconds  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
         logger.exception(
             "training_unexpected_error",
             extra=log_extra
