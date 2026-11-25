@@ -2,7 +2,7 @@ from pathlib import Path, PurePosixPath
 
 import modal
 
-SUNET_ID = "brunborg"
+SUNET_ID = "selfstudy"
 
 (DATA_PATH := Path("data")).mkdir(exist_ok=True)
 
@@ -23,7 +23,9 @@ def build_image(
         image = image.apt_install("curl").run_commands(
             "curl -fsSL https://tailscale.com/install.sh | sh"
         )
-    image = image.uv_sync()
+    # Training deps (jax, equinox, wandb, ...) live in the `server` extra, which
+    # uv_sync() does not install by default. Skip the local dev group (pandas etc.).
+    image = image.uv_sync(extras=["server"], extra_options="--no-dev")
     if include_tests:
         image = image.add_local_dir("tests", remote_path="/root/tests")
     if include_tailscale:
@@ -42,10 +44,7 @@ VOLUME_MOUNTS: dict[str | PurePosixPath, modal.Volume | modal.CloudBucketMount] 
 }
 
 MODAL_SECRETS = [
-    modal.Secret.from_name("my-secret", required_keys=["HF_TOKEN", "WANDB_API_KEY"]),
-    modal.Secret.from_name(
-        "tailscale-auth",
-        required_keys=["TAILSCALE_AUTHKEY", "TAILSCALE_URL", "INTERNAL_API_KEY"],
-    ),
+    modal.Secret.from_name("wandb", required_keys=["WANDB_API_KEY"]),
+    modal.Secret.from_name("huggingface", required_keys=["HF_TOKEN"]),
     modal.Secret.from_dict({"XLA_PYTHON_CLIENT_MEM_FRACTION": "0.90"}),
 ]

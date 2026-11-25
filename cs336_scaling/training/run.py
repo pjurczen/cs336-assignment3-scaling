@@ -10,10 +10,6 @@ import equinox.nn as nn
 import jax
 import modal
 import wandb
-from jax.sharding import AxisType, NamedSharding
-from jax.sharding import PartitionSpec as P
-from jaxtyping import Array
-
 from cs336_scaling.api.internal import (
     CompletedPayload,
     FailedPayload,
@@ -46,6 +42,9 @@ from cs336_scaling.training.model.jax_utils import (
 from cs336_scaling.training.optimizer import AdamWConfig
 from cs336_scaling.training.training_config import TrainingConfig
 from cs336_scaling.utils import format_bytes, format_params
+from jax.sharding import AxisType, NamedSharding
+from jax.sharding import PartitionSpec as P
+from jaxtyping import Array
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +83,15 @@ class TrainingResult:
 
 
 @app.function(
-    image=build_image(include_tailscale=True),
+    image=build_image(),
     volumes=VOLUME_MOUNTS,
-    timeout=60 * 60 * 12,
+    # Modal's timeout covers container startup, data copy and JIT compile too,
+    # while max_runtime_seconds only counts training; leave headroom for a 12h run.
+    timeout=60 * 60 * 13,
     secrets=MODAL_SECRETS,
-    gpu="B200",
-    ephemeral_disk=1099511,
+    gpu="A100-80GB",
+    # Only the train shards a run needs are copied to /tmp/data (2 bytes/token).
+    ephemeral_disk=100 * 1024,
 )
 def run_training(
     training_config: TrainingConfig, sunet_id: str, experiment_id: int
@@ -123,7 +125,6 @@ def run_training(
         },
     )
     wandb_run = wandb.init(
-        entity="hashimoto-group",
         project="cs336-scaling-2026",
         name=f"{sunet_id}-{experiment_id}-{training_config.unique_id}",
         id=f"{sunet_id}-{experiment_id}-{training_config.unique_id}",

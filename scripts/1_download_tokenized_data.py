@@ -1,3 +1,5 @@
+import math
+
 from cs336_scaling.modal_utils import MODAL_SECRETS, VOLUME_MOUNTS, app, build_image
 from cs336_scaling.tokenized_data import (
     DCLMData,
@@ -35,7 +37,9 @@ def make_chunk(dclm_chunk: TokenizedDCLMChunk) -> TokenizedDCLMChunkResult:
     image=build_image(),
     volumes=VOLUME_MOUNTS,
     timeout=60 * 60 * 12,
-    ephemeral_disk=2_850_000,
+    # Raw chunks + shuffle runs + final shards each hold ~2 bytes/token locally.
+    ephemeral_disk=200 * 1024,
+    memory=32 * 1024,  # one shuffle run (DCLMData.shuffle_run_target_bytes) in RAM
     nonpreemptible=True,
 )
 def make_final_dclm_data():
@@ -48,7 +52,16 @@ def make_final_dclm_data():
 def modal_main():
     # tokenize chunks in parallel. can move this into the make final dclm data, but this is nicer. approx 150M tokens per chunk (for settings n_dclm_chunks)
     dclm_shard_urls = ShuffledDCLMShardUrls().load_or_create()
-    n_dclm_chunks = 3_333
+    # Enough ~150M-token chunks to cover DCLMData's train + validation tokens,
+    # with 25% margin since chunk sizes vary. DCLMData asserts if it falls short.
+    dclm_data = DCLMData()
+    padded_train_tokens = (
+            math.ceil(dclm_data.total_tokens / dclm_data.tokens_per_chunk)
+            * dclm_data.tokens_per_chunk
+    )
+    needed_tokens = padded_train_tokens + dclm_data.validation_tokens
+    n_dclm_chunks = math.ceil(needed_tokens / 150_000_000 * 1.25)
+    print(f"tokenizing {n_dclm_chunks} DCLM chunks for {needed_tokens:_} tokens")
     total_tokens = 0
     chunk_idx = 0
     for chunk in make_chunk.map(

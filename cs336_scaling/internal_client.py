@@ -3,14 +3,18 @@ import os
 from collections.abc import Mapping
 
 import requests
-from pydantic import BaseModel
-
 from cs336_scaling.api.internal import FinishPayload
 from cs336_scaling.config import settings_from_env
 from cs336_scaling.log.internal_client_errors import InternalAPIError
 from cs336_scaling.schemas.event import WorkerEvent
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+
+def _internal_api_enabled() -> bool:
+    # Without the course's internal API (self-hosted runs), reporting is a no-op.
+    return bool(os.getenv("INTERNAL_API_KEY"))
 
 
 def post_internal_worker_event(
@@ -18,6 +22,8 @@ def post_internal_worker_event(
     event_type: WorkerEvent,
     log_extra: Mapping[str, object],
 ) -> None:
+    if not _internal_api_enabled():
+        return
     settings = settings_from_env()
     api_base_url = os.getenv("TAILSCALE_URL", settings.api_base_url).rstrip("/")
     event_log_extra = {
@@ -46,6 +52,8 @@ def post_internal_finish(
     payload: FinishPayload,
     log_extra: Mapping[str, object],
 ) -> None:
+    if not _internal_api_enabled():
+        return
     settings = settings_from_env()
     api_base_url = os.getenv("TAILSCALE_URL", settings.api_base_url).rstrip("/")
     finish_log_extra = {

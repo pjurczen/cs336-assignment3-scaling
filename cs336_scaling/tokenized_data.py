@@ -7,12 +7,11 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
+from cs336_scaling.utils import tqdm_for_logger
 from furu import Furu
 from huggingface_hub import HfApi
 from numpy.lib.format import open_memmap
 from transformers import AutoTokenizer
-
-from cs336_scaling.utils import tqdm_for_logger
 
 _LOCAL_RAW_TOKEN_DIR = Path("/tmp/rawotokendata")
 _LOCAL_FINAL_SHARD_DIR = Path("/tmp/final_dclm_shards")
@@ -164,14 +163,17 @@ class _ShuffleRun:
 
 class DCLMData(Furu[DCLMDataResult]):
     tokens_per_chunk: int = 2**29  # this is 1GiB since uint16 is 2 bytes
-    total_tokens: int = 500_000_000_000
+    # Sized for a 3 + 12 A100-hour self-study budget (no epoching, so this must
+    # cover the largest single run). Raising it later only re-tokenizes the new
+    # chunks; already-tokenized chunks are cached per URL.
+    total_tokens: int = 20_000_000_000
     shuffled_dclm_urls: ShuffledDCLMShardUrls = field(
         default_factory=ShuffledDCLMShardUrls
     )
     validation_tokens: int = 2**29
     seed = 67
     n_workers = 32
-    shuffle_run_target_bytes: int = 128 * 1024**3
+    shuffle_run_target_bytes: int = 16 * 1024 ** 3  # held in RAM per shuffle run
     merge_block_target_bytes: int = 1024**3
 
     def _create(self) -> DCLMDataResult:
